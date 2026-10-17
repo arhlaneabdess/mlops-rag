@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -47,7 +48,13 @@ async def lifespan(app: FastAPI):
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        corr_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        supplied_id = request.headers.get("X-Request-ID", "")
+        # Keep IDs safe for response headers and bounded for log/trace fields.
+        if supplied_id and re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", supplied_id):
+            corr_id = supplied_id
+        else:
+            corr_id = str(uuid.uuid4())
+
         request.state.correlation_id = corr_id
         start_time = time.perf_counter()
         response: Response = await call_next(request)

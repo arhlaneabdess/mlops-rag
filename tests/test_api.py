@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -45,6 +47,51 @@ def test_api_ask_valid():
     assert "sources" in data
     assert "Egyptian Civil Code, Article 147" in data["sources"]
     assert "X-Request-ID" in response.headers
+
+
+def test_request_id_preserves_valid_incoming_id():
+    client = TestClient(app)
+    request_id = "trace-123.ab:456_test"
+    response = client.get("/metadata", headers={"X-Request-ID": request_id})
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] == request_id
+    assert float(response.headers["X-Response-Time-MS"]) >= 0
+
+
+def test_request_id_is_generated_when_missing():
+    client = TestClient(app)
+    response = client.get("/metadata")
+
+    assert response.status_code == 200
+    generated_id = response.headers["X-Request-ID"]
+    assert str(uuid.UUID(generated_id)) == generated_id
+    assert float(response.headers["X-Response-Time-MS"]) >= 0
+
+
+@pytest.mark.parametrize("request_id", ["bad id", "x" * 129, "contains/slash"])
+def test_request_id_is_replaced_when_malformed(request_id):
+    client = TestClient(app)
+    response = client.get("/metadata", headers={"X-Request-ID": request_id})
+
+    assert response.status_code == 200
+    generated_id = response.headers["X-Request-ID"]
+    assert generated_id != request_id
+    assert str(uuid.UUID(generated_id)) == generated_id
+
+
+def test_request_id_headers_are_present_on_validation_error():
+    client = TestClient(app)
+    response = client.post(
+        "/ask",
+        json={"question": ""},
+        headers={"X-Request-ID": "validation-test-1"},
+    )
+
+    assert response.status_code == 422
+    assert response.headers["X-Request-ID"] == "validation-test-1"
+    assert float(response.headers["X-Response-Time-MS"]) >= 0
+    assert "detail" in response.json()
 
 
 def test_api_ask_validation_error():
