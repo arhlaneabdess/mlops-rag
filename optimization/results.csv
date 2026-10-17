@@ -1,0 +1,5 @@
+technique,hit_rate,faithfulness,p50_ms,p95_ms,p99_ms,throughput_qps,size_mb,peak_ram_mb,hardware,monthly_cost_1k_req_usd
+Baseline (FP32 PyTorch),0.8,0.784,530.36,650.24,703.08,1.88,13.22,994.61,CPU (x86_64),66145.3
+PTQ INT8 Dynamic (PyTorch),0.8,0.784,642.58,1018.42,1121.83,1.49,13.22,120.0,CPU (x86_64),83147.0
+Distilled Re-ranker (Dense+Cross),0.8,0.784,569.53,812.23,976.19,1.65,13.22,994.86,CPU (x86_64),75452.8
+AWQ 4-bit Quantization (Generative),0.8,0.784,664.0,1253.37,1380.01,1.4,13.22,994.58,CPU / INT4 Simulated,88979.7

@@ -58,3 +58,16 @@ Layer 1: Hardware & Compute Layer      --> CPU / NVIDIA Tensor Cores (Optimized 
 
 ### Why Shadow Mode is the Safest Way to Validate Model Changes
 In high-liability domains like law or medical diagnosis, a newly trained candidate model might pass synthetic offline evaluations but fail silently on real-world edge cases. Shadow mode duplicates live production traffic to the candidate without serving its answers to users. Engineers can evaluate candidate predictions, latency, and hallucination rates against real legal queries with **absolute zero risk** of user impact.
+
+## 8. vLLM Serving Architecture: PagedAttention & Continuous Batching (Handbook pg. 29)
+
+### 1. PagedAttention
+Standard transformer generation allocates contiguous memory blocks for the Key-Value (KV) cache based on the maximum possible sequence length. This leads to 60–80% memory fragmentation and limits concurrency. PagedAttention divides the KV cache into non-contiguous virtual memory blocks (similar to paging in OS kernels), allowing dynamic allocation without memory waste and unlocking up to 4× higher concurrency.
+
+### 2. Continuous (Iteration-Level) Batching
+Traditional web batching waits for a batch of requests to arrive and processes them together until the longest sequence completes, causing shorter requests to stall. Continuous batching operates at the token-iteration level: as soon as one sequence emits an `<EOS>` end token, its slot is immediately freed and a new waiting request is inserted mid-flight.
+
+### 3. Why a Naive FastAPI + Transformers Loop Cannot Compete
+1. **The Python GIL:** Running eager autoregressive generation in FastAPI locks the Python Global Interpreter Lock, degrading API concurrency.
+2. **Static Padding Overhead:** In a naive loop, variable-length legal queries must be padded to the longest sequence in the batch, wasting compute cycles on dummy pad tokens.
+3. **No KV Cache Management:** Naive loops reallocate KV tensors per request, exhausting GPU VRAM rapidly under multi-user concurrency.
