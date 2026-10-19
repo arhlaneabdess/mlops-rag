@@ -1,9 +1,27 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Dynamically resolve repository root: mlops-rag/
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+def get_project_root() -> Path:
+    """Dynamically resolves the project root across local virtualenv and Docker container."""
+    if "PROJECT_ROOT" in os.environ:
+        return Path(os.environ["PROJECT_ROOT"]).resolve()
+
+    # 1. Running inside Docker container (/app)
+    if Path("/app/data").exists() or Path("/app/src").exists():
+        return Path("/app")
+
+    # 2. Running locally in development (src/legal_rag/config.py -> parent x 3)
+    candidate = Path(__file__).resolve().parent.parent.parent
+    if (candidate / "pyproject.toml").exists() or (candidate / "data").exists():
+        return candidate
+
+    return Path.cwd().resolve()
+
+
+REPO_ROOT = get_project_root()
 
 
 class Settings(BaseSettings):

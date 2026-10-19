@@ -76,8 +76,25 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
       - LOG_LEVEL=INFO
+      - PROJECT_ROOT=/app
+      - DATA_DIR=/app/data
+      - PROCESSED_JSON_PATH=/app/data/processed/egyptian_civil_code.json
+      - CHUNKS_JSON_PATH=/app/data/processed/chunks.json
+      - CHROMA_DB_DIR=/app/data/processed/chroma_db
     volumes:
       - ../data/processed:/app/data/processed
+    restart: unless-stopped
+  # 5. Prometheus Metrics Engine
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: legal-rag-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
     restart: unless-stopped
 
 volumes:
