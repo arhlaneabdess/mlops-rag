@@ -76,3 +76,15 @@ rag_active_requests{endpoint="/ask"} 0.0
 1. **Continuous Tier (Every Request - Cheap):** Prometheus `/metrics` tracking request counts, stage latency histograms, and inflight saturation.
 2. **Scheduled Tier (Daily - Medium Cost):** Embedding drift detector running on batches of production query logs, inserting snapshots into PostgreSQL `drift_metrics`.
 3. **Investigation Tier (On Alert - Expensive):** Full RAGAS LLM-as-a-judge evaluation suite run on flagged traces in Langfuse when cosine drift exceeds 0.32.
+
+## 4. LLM Observability with Langfuse (Handbook pg. 53)
+
+### Why LLM Applications Fail Differently
+Unlike classical ML or microservices where failures manifest as HTTP 500 errors or latency spikes, LLM applications fail silently with fluent, grammatically correct hallucinations while returning HTTP 200. Traditional CPU/RAM monitoring fails to detect prompt regressions, context overflow, or toxic completions.
+
+### Tracing Hierarchy Implemented
+- **Trace (`arabic_legal_rag_query`):** Encapsulates the entire request, tagging `user_id`, `session_id`, `correlation_id`, and `law`.
+  - **Span (`retrieve`):** Tracks dense retrieval latency, top-$k$ configuration, and candidate article IDs.
+  - **Span (`rerank`):** Records context compression ratio (pruning 5 candidate chunks to top-2).
+  - **Generation (`generate`):** Records the exact Arabic prompt, model name (`Qwen2.5-0.5B-Instruct`), prompt vs. completion token counts, and synthesized legal advice.
+  - **Score (`groundedness_initial`):** Attaches quality judgements directly to the trace.

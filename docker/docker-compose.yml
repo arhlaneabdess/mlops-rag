@@ -96,6 +96,22 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
     restart: unless-stopped
+  # 6. Langfuse LLM Observability & Tracing Engine
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: legal-rag-langfuse
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://mlflow:mlflowpassword@postgres:5432/langfusedb
+      - NEXTAUTH_SECRET=mysecretkey123456789012345678901234
+      - SALT=mysalt123456789012345678901234
+      - NEXTAUTH_URL=http://localhost:3001
+      - TELEMETRY_ENABLED=false
+    restart: unless-stopped
 
 volumes:
   postgres_data:
