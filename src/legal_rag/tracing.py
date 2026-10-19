@@ -1,6 +1,7 @@
 import os
-import uuid
+import time
 from typing import Any
+import uuid
 
 # Universal Langfuse import handling across v2, v3, and fallback
 try:
@@ -10,13 +11,10 @@ except ImportError:
         from langfuse import Langfuse
         from langfuse.decorators import observe
     except ImportError:
-        # Fallback dummy decorator if langfuse is not yet installed
         def observe(*args, **kwargs):
             def decorator(fn):
                 return fn
-
             return decorator
-
         Langfuse = None
 
 from legal_rag.retriever import LegalRetriever
@@ -43,22 +41,38 @@ class TracedLegalRAG:
         self.retriever = retriever or LegalRetriever()
 
     @observe(name="retrieve")
-    def retrieve(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
+    def retrieve(self, query: str, top_k: int = 10) -> list[dict[str, Any]]:
         norm_q = normalize_arabic(query)
         hits = self.retriever.search(norm_q, top_k=top_k)
         return hits
 
     @observe(name="rerank")
     def rerank(
-        self, query: str, candidates: list[dict[str, Any]], top_n: int = 2
+        self, query: str, candidates: list[dict[str, Any]], top_n: int = 3
     ) -> list[dict[str, Any]]:
+        """
+        Topic-aware hybrid re-ranking scoring both statutory body text 
+        and legal hierarchy metadata (topic, chapter, citation).
+        """
         query_terms = set(query.split())
         scored = []
         for cand in candidates:
-            doc_terms = set(cand["document"].split())
-            overlap = len(query_terms.intersection(doc_terms)) / max(len(query_terms), 1)
+            doc_text = cand.get("document", "")
+            meta = cand.get("metadata", {})
+            topic = meta.get("topic", "")
+            chapter = meta.get("chapter", "")
+            citation = meta.get("citation", "")
+
+            combined_legal_text = f"{topic} {chapter} {citation} {doc_text}"
+            legal_terms = set(combined_legal_text.split())
+
+            overlap = len(query_terms.intersection(legal_terms)) / max(
+                len(query_terms), 1
+            )
             dense_score = cand.get("score", 0.5)
-            score = (dense_score * 0.6) + (overlap * 0.4)
+
+            # 50% Dense Vector Score + 50% Legal Concept & Statutory Match
+            score = (dense_score * 0.5) + (overlap * 0.5)
             c = dict(cand)
             c["rerank_score"] = round(score, 4)
             scored.append(c)
@@ -77,7 +91,9 @@ class TracedLegalRAG:
             f"السند القانوني المعتمد: {', '.join(sources)}."
         )
 
-        prompt_tokens = (len(question) + sum(len(h["document"]) for h in hits)) // 3
+        prompt_tokens = (
+            len(question) + sum(len(h["document"]) for h in hits)
+        ) // 3
         completion_tokens = len(answer) // 3
 
         return {
@@ -97,8 +113,8 @@ class TracedLegalRAG:
     ) -> dict[str, Any]:
         corr_id = correlation_id or str(uuid.uuid4())
 
-        # 1. Retrieve Step (Span)
-        candidates = self.retrieve(question, top_k=5)
+        # 1. Retrieve Step (Fetch top 10 candidates from ChromaDB)
+        candidates = self.retrieve(question, top_k=10)
         if not candidates:
             return {
                 "answer": "لم يتم العثور على مواد قانونية مطابقة.",
@@ -106,24 +122,13 @@ class TracedLegalRAG:
                 "correlation_id": corr_id,
             }
 
-        # 2. Rerank Step (Span)
-        hits = self.rerank(question, candidates, top_n=2)
+        # 2. Rerank Step (Topic-aware pruning to top 3 precision articles)
+        hits = self.rerank(question, candidates, top_n=3)
 
-        # 3. Generate Step (Generation)
+        # 3. Generate Step (Synthesize grounded legal consultation)
         result = self.generate(question, hits)
         result["correlation_id"] = corr_id
         result["user_id"] = user_id
         result["session_id"] = session_id
-
-        # 4. Attach quality score to trace (Handbook pg. 53)
-        try:
-            if langfuse_client and hasattr(langfuse_client, "score"):
-                langfuse_client.score(
-                    name="groundedness_initial",
-                    value=0.95,
-                    comment="Direct citation match with Civil Code provisions",
-                )
-        except Exception:
-            pass
 
         return result

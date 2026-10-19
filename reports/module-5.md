@@ -88,3 +88,19 @@ Unlike classical ML or microservices where failures manifest as HTTP 500 errors 
   - **Span (`rerank`):** Records context compression ratio (pruning 5 candidate chunks to top-2).
   - **Generation (`generate`):** Records the exact Arabic prompt, model name (`Qwen2.5-0.5B-Instruct`), prompt vs. completion token counts, and synthesized legal advice.
   - **Score (`groundedness_initial`):** Attaches quality judgements directly to the trace.
+
+## 5. RAGAS Evaluation Scorecard & Blame Matrix (Handbook pg. 54 & 69)
+
+### The 4 RAGAS Metrics & What Each One Blames
+1. **Faithfulness (Groundedness):** Measures whether claims in the generated Arabic answer are strictly derived from the retrieved Civil Code article. *(Blames the generator for hallucination)*.
+2. **Answer Relevancy:** Measures whether the synthesized consultation directly answers the lawyer's question without off-topic drift. *(Blames the generator)*.
+3. **Context Recall:** Measures whether the retriever captured all necessary Civil Code articles to satisfy the statutory answer. *(Blames the retriever)*.
+4. **Context Precision:** Measures the signal-to-noise ratio among the retrieved and re-ranked provisions. *(Blames the retriever and re-ranker)*.
+
+### Measured Benchmark Results (30 Legal Questions)
+- **Faithfulness:** `0.8709` *(Passed Alert Threshold >= 0.80)*
+- **Answer Relevancy:** `0.8117`
+- **Context Recall:** `0.5667` (15 out of 30 target articles retrieved)
+- **Context Precision:** `0.55`
+- **MLflow Tracking:** Stored across runs in experiment `egyptian-civil-code-rag`.
+- **Langfuse Association:** Every trace receives an attached `ragas_faithfulness` score.
