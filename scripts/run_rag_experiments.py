@@ -1,8 +1,7 @@
-import os
-import time
 import json
+import os
 import subprocess
-from typing import List, Dict, Any
+import time
 
 # 1. Export MinIO / S3 credentials for local boto3 before importing MLflow
 os.environ["MLFLOW_TRACKING_URI"] = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
@@ -24,7 +23,9 @@ mlflow.set_experiment("egyptian-civil-code-rag")
 def get_git_commit() -> str:
     """Retrieves current git commit hash for lineage tracking."""
     try:
-        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+        return (
+            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+        )
     except Exception:
         return "unknown"
 
@@ -89,7 +90,7 @@ EVAL_GROUND_TRUTH = [
 ]
 
 
-def evaluate_retrieval(retriever: LegalRetriever, top_k: int) -> Dict[str, float]:
+def evaluate_retrieval(retriever: LegalRetriever, top_k: int) -> dict[str, float]:
     """Runs benchmark evaluation and computes Hit Rate, MRR, latency, and faithfulness proxy."""
     hits = 0
     reciprocal_ranks = []
@@ -188,14 +189,16 @@ def main():
             print(f"\n[*] Running: {exp['run_name']}...")
 
             # Log Hyperparameters
-            mlflow.log_params({
-                "chunking_strategy": exp["chunking_strategy"],
-                "chunk_size": exp["chunk_size"],
-                "chunk_overlap": exp["chunk_overlap"],
-                "top_k": exp["top_k"],
-                "embedding_model": exp["embedding_model"],
-                "vector_db": "ChromaDB",
-            })
+            mlflow.log_params(
+                {
+                    "chunking_strategy": exp["chunking_strategy"],
+                    "chunk_size": exp["chunk_size"],
+                    "chunk_overlap": exp["chunk_overlap"],
+                    "top_k": exp["top_k"],
+                    "embedding_model": exp["embedding_model"],
+                    "vector_db": "ChromaDB",
+                }
+            )
 
             # Evaluate Metrics
             metrics = evaluate_retrieval(retriever, top_k=exp["top_k"])
@@ -206,20 +209,26 @@ def main():
             mlflow.log_metrics(metrics)
 
             # Log Lineage Tags (Handbook pg. 20)
-            mlflow.set_tags({
-                "git_commit": git_commit,
-                "data_version": dvc_hash,
-                "author": "student",
-                "framework": "ChromaDB + SentenceTransformers",
-                "law": "Egyptian Civil Code 1948",
-            })
+            mlflow.set_tags(
+                {
+                    "git_commit": git_commit,
+                    "data_version": dvc_hash,
+                    "author": "student",
+                    "framework": "ChromaDB + SentenceTransformers",
+                    "law": "Egyptian Civil Code 1948",
+                }
+            )
 
             # Log Artifacts: Evaluation JSON
             artifact_dir = settings.DATA_DIR / "eval_artifacts"
             artifact_dir.mkdir(parents=True, exist_ok=True)
             eval_path = artifact_dir / f"{exp['run_name']}_eval.json"
             with open(eval_path, "w", encoding="utf-8") as f:
-                json.dump({"config": exp, "metrics": metrics, "benchmark_size": len(EVAL_GROUND_TRUTH)}, f, indent=2)
+                json.dump(
+                    {"config": exp, "metrics": metrics, "benchmark_size": len(EVAL_GROUND_TRUTH)},
+                    f,
+                    indent=2,
+                )
 
             mlflow.log_artifact(str(eval_path))
 
@@ -228,17 +237,21 @@ def main():
                 best_run_id = run.info.run_id
                 best_run_name = exp["run_name"]
 
-            print(f"[✓] {exp['run_name']} - Faithfulness: {metrics['faithfulness']}, Hit Rate: {metrics['hit_rate']}, Latency: {metrics['avg_latency_ms']}ms")
+            print(
+                f"[✓] {exp['run_name']} - Faithfulness: {metrics['faithfulness']}, Hit Rate: {metrics['hit_rate']}, Latency: {metrics['avg_latency_ms']}ms"
+            )
 
     # 4. Model Registry Promotion (Handbook pg. 19-20 & 69)
-    print(f"\n[*] Best Run: {best_run_name} (Run ID: {best_run_id}, Faithfulness: {best_faithfulness})")
+    print(
+        f"\n[*] Best Run: {best_run_name} (Run ID: {best_run_id}, Faithfulness: {best_faithfulness})"
+    )
     model_name = "egyptian-civil-code-rag"
     client = MlflowClient()
 
     try:
         client.create_registered_model(
             model_name,
-            description="Production Arabic Legal RAG Pipeline for Egyptian Civil Code (Law 131 of 1948)"
+            description="Production Arabic Legal RAG Pipeline for Egyptian Civil Code (Law 131 of 1948)",
         )
     except Exception:
         pass
@@ -248,7 +261,7 @@ def main():
         name=model_name,
         source=run_info.artifact_uri,
         run_id=best_run_id,
-        description=f"Best configuration: {best_run_name} (Faithfulness: {best_faithfulness}, Hit Rate: 1.0)"
+        description=f"Best configuration: {best_run_name} (Faithfulness: {best_faithfulness}, Hit Rate: 1.0)",
     )
 
     client.transition_model_version_stage(
@@ -257,7 +270,9 @@ def main():
         stage="Production",
         archive_existing_versions=True,
     )
-    print(f"[✓] Successfully registered and promoted '{model_name}' version {reg_version.version} to Production stage!")
+    print(
+        f"[✓] Successfully registered and promoted '{model_name}' version {reg_version.version} to Production stage!"
+    )
 
 
 if __name__ == "__main__":

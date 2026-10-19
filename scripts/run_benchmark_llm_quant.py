@@ -1,5 +1,5 @@
-import numpy as np
-from typing import List, Dict, Any
+from typing import Any
+
 from legal_rag.retriever import LegalRetriever
 from optimization.benchmark import run_benchmark
 
@@ -9,10 +9,11 @@ class Quantized4bitRAGPipeline:
     Simulates the AWQ 4-bit quantized RAG pipeline where retrieval feeds
     a 4-bit compressed generative backbone.
     """
+
     def __init__(self, retriever: LegalRetriever = None):
         self.retriever = retriever or LegalRetriever()
 
-    def search_and_generate(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    def search_and_generate(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
         hits = self.retriever.search(query, top_k=top_k)
         if not hits:
             return []

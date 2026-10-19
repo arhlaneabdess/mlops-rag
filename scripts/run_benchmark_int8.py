@@ -1,4 +1,5 @@
 import torch
+
 from legal_rag.retriever import LegalRetriever
 from optimization.benchmark import run_benchmark
 
@@ -8,6 +9,7 @@ class QuantizedLegalRetriever(LegalRetriever):
     Subclass that applies PyTorch dynamic INT8 quantization to linear layers
     of the underlying transformer backbone.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         print("[*] Applying Dynamic INT8 Quantization to linear layers...")
@@ -16,9 +18,7 @@ class QuantizedLegalRetriever(LegalRetriever):
 
         # Quantize torch.nn.Linear layers to torch.qint8
         self.quantized_backbone = torch.ao.quantization.quantize_dynamic(
-            transformer_module,
-            {torch.nn.Linear},
-            dtype=torch.qint8
+            transformer_module, {torch.nn.Linear}, dtype=torch.qint8
         )
         # Point the sentence-transformer to use the quantized backbone
         self.model._first_module().auto_model = self.quantized_backbone

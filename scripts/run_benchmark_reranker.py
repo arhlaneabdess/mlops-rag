@@ -1,5 +1,5 @@
-import numpy as np
-from typing import List, Dict, Any
+from typing import Any
+
 from legal_rag.retriever import LegalRetriever
 from optimization.benchmark import run_benchmark
 
@@ -9,10 +9,11 @@ class DistilledReRanker:
     Lightweight distilled re-ranking mechanism that computes fine-grained
     lexical-semantic alignment scores to prune false-positive dense matches.
     """
+
     def __init__(self, top_n: int = 2):
         self.top_n = top_n
 
-    def rerank(self, query: str, candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def rerank(self, query: str, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not candidates:
             return []
 
@@ -36,7 +37,7 @@ class DistilledReRanker:
 
         # Sort descending by re-ranked score and take top-N
         scored_candidates.sort(key=lambda x: x["rerank_score"], reverse=True)
-        return scored_candidates[:self.top_n]
+        return scored_candidates[: self.top_n]
 
 
 def main():
@@ -44,7 +45,7 @@ def main():
     retriever = LegalRetriever()
     reranker = DistilledReRanker(top_n=2)
 
-    def search_with_reranking(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search_with_reranking(query: str, top_k: int = 5) -> list[dict[str, Any]]:
         # 1. Broad dense retrieval (top 5 candidates)
         candidates = retriever.search(query, top_k=top_k)
         # 2. Precision cross-scoring and compression (top 2 precision chunks)

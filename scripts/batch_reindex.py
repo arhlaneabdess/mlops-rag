@@ -1,6 +1,5 @@
-from pathlib import Path
-from legal_rag.config import settings
 from legal_rag.batch import BatchReindexer
+from legal_rag.config import settings
 
 
 def main():

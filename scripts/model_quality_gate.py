@@ -1,13 +1,15 @@
-import sys
 import json
-from pathlib import Path
+import sys
+
 from legal_rag.config import settings
 
 FAITHFULNESS_THRESHOLD = 0.75
 
 
 def run_quality_gate() -> bool:
-    print(f"[*] Checking RAG Model Quality Gate (Threshold: Faithfulness >= {FAITHFULNESS_THRESHOLD})...")
+    print(
+        f"[*] Checking RAG Model Quality Gate (Threshold: Faithfulness >= {FAITHFULNESS_THRESHOLD})..."
+    )
 
     artifact_dir = settings.DATA_DIR / "eval_artifacts"
     if not artifact_dir.exists():
@@ -41,7 +43,9 @@ def run_quality_gate() -> bool:
         print(f"[✓] QUALITY GATE PASSED: Faithfulness {best_score:.4f} >= {FAITHFULNESS_THRESHOLD}")
         return True
     else:
-        print(f"[✘] QUALITY GATE FAILED: Faithfulness {best_score:.4f} is below the {FAITHFULNESS_THRESHOLD} baseline!")
+        print(
+            f"[✘] QUALITY GATE FAILED: Faithfulness {best_score:.4f} is below the {FAITHFULNESS_THRESHOLD} baseline!"
+        )
         return False
 
 
