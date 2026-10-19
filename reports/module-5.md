@@ -62,3 +62,17 @@ rag_tokens_created{token_type="completion"} 1.7924397649945369e+09
 rag_active_requests{endpoint="/ask"} 0.0
 # HELP rag_guardrail_rejections_total Security rejections for prompt injection or PII
 # TYPE rag_guardrail_rejections_total counter
+```
+
+## 2. Legal Drift Taxonomy & Detection Matrix (Handbook pg. 43–44)
+
+| Drift Type | What Changes | First Signal to Appear | Ground Truth Needed? | Detection Tool | Time Until User Notices |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Data / Embedding Drift** | $P(X)$ Semantic space | High cosine distance from Civil Code centroid | **No** (Unsupervised) | Embedding Cosine Distance + MMD | ~1 day (irrelevant articles retrieved) |
+| **Concept Drift** | $P(Y \mid X)$ Legal relation | Groundedness score drops on unchanged queries | Yes | RAGAS Faithfulness + Human Review | ~2 weeks (legal precedent reverses) |
+| **Label / Target Drift** | $P(Y)$ Output distribution | Rejection rate or "article repealed" share spikes | Yes | PostgreSQL Drift Metrics | ~1 month (judicial decree issued) |
+
+### 3. Three-Tier Monitoring Strategy (Handbook pg. 43)
+1. **Continuous Tier (Every Request - Cheap):** Prometheus `/metrics` tracking request counts, stage latency histograms, and inflight saturation.
+2. **Scheduled Tier (Daily - Medium Cost):** Embedding drift detector running on batches of production query logs, inserting snapshots into PostgreSQL `drift_metrics`.
+3. **Investigation Tier (On Alert - Expensive):** Full RAGAS LLM-as-a-judge evaluation suite run on flagged traces in Langfuse when cosine drift exceeds 0.32.
