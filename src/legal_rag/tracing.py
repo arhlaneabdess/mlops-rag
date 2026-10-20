@@ -1,7 +1,6 @@
 import os
-import time
-from typing import Any
 import uuid
+from typing import Any
 
 # Universal Langfuse import handling across v2, v3, and fallback
 try:
@@ -11,10 +10,13 @@ except ImportError:
         from langfuse import Langfuse
         from langfuse.decorators import observe
     except ImportError:
+
         def observe(*args, **kwargs):
             def decorator(fn):
                 return fn
+
             return decorator
+
         Langfuse = None
 
 from legal_rag.retriever import LegalRetriever
@@ -51,7 +53,7 @@ class TracedLegalRAG:
         self, query: str, candidates: list[dict[str, Any]], top_n: int = 3
     ) -> list[dict[str, Any]]:
         """
-        Topic-aware hybrid re-ranking scoring both statutory body text 
+        Topic-aware hybrid re-ranking scoring both statutory body text
         and legal hierarchy metadata (topic, chapter, citation).
         """
         query_terms = set(query.split())
@@ -66,9 +68,7 @@ class TracedLegalRAG:
             combined_legal_text = f"{topic} {chapter} {citation} {doc_text}"
             legal_terms = set(combined_legal_text.split())
 
-            overlap = len(query_terms.intersection(legal_terms)) / max(
-                len(query_terms), 1
-            )
+            overlap = len(query_terms.intersection(legal_terms)) / max(len(query_terms), 1)
             dense_score = cand.get("score", 0.5)
 
             # 50% Dense Vector Score + 50% Legal Concept & Statutory Match
@@ -91,9 +91,7 @@ class TracedLegalRAG:
             f"السند القانوني المعتمد: {', '.join(sources)}."
         )
 
-        prompt_tokens = (
-            len(question) + sum(len(h["document"]) for h in hits)
-        ) // 3
+        prompt_tokens = (len(question) + sum(len(h["document"]) for h in hits)) // 3
         completion_tokens = len(answer) // 3
 
         return {
