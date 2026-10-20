@@ -1,0 +1,126 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Row 1: Service Health (SLA & Golden Signals)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 1 },
+      "id": 1,
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "targets": [{ "expr": "sum(rate(rag_requests_total[1m]))", "legendFormat": "Queries/sec" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 1 },
+      "id": 2,
+      "title": "p95 & p50 Latency (Seconds)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(rag_stage_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95 Latency" },
+        { "expr": "histogram_quantile(0.50, sum(rate(rag_stage_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50 Latency" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 1 },
+      "id": 3,
+      "title": "Error Rate (%)",
+      "type": "timeseries",
+      "targets": [{ "expr": "sum(rate(rag_requests_total{status=~\"[45]..\"}[5m])) / sum(rate(rag_requests_total[5m]))", "legendFormat": "Error Rate" }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "id": 200,
+      "title": "Row 2: Inflight Concurrency & Security Guardrails",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "title": "Active In-Flight Queries",
+      "type": "timeseries",
+      "targets": [{ "expr": "rag_active_requests", "legendFormat": "Active Queries" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "title": "Security & Guardrail Interceptions",
+      "type": "timeseries",
+      "targets": [{ "expr": "sum(rag_guardrail_rejections_total) by (guardrail_type)", "legendFormat": "{{guardrail_type}}" }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 300,
+      "title": "Row 3: RAG Model Behavior & Tokens",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 15 },
+      "id": 6,
+      "title": "Cumulative Token Consumption",
+      "type": "timeseries",
+      "targets": [{ "expr": "sum(rag_tokens_total) by (token_type)", "legendFormat": "{{token_type}} tokens" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 15 },
+      "id": 7,
+      "title": "Stage Latency Breakdown (Retrieval vs Generation)",
+      "type": "timeseries",
+      "targets": [{ "expr": "rate(rag_stage_latency_seconds_sum[5m]) / rate(rag_stage_latency_seconds_count[5m])", "legendFormat": "Stage: {{stage}}" }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+      "id": 400,
+      "title": "Row 4: Semantic Drift History (PostgreSQL Store)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "PostgreSQL-DriftStore" },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 22 },
+      "id": 8,
+      "title": "Historical Embedding Cosine Drift Log",
+      "type": "table",
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT computed_at, dataset, metric, value, threshold, drifted FROM drift_metrics ORDER BY computed_at DESC LIMIT 15;",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["mlops", "legal-rag", "production"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "Legal RAG Production Observability",
+  "uid": "legal-rag-prod-dash",
+  "version": 1
+}

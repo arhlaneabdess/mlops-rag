@@ -92,6 +92,7 @@ services:
       - "9090:9090"
     volumes:
       - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../monitoring/rules:/etc/prometheus/rules
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -111,6 +112,23 @@ services:
       - SALT=mysalt123456789012345678901234
       - NEXTAUTH_URL=http://localhost:3001
       - TELEMETRY_ENABLED=false
+    restart: unless-stopped
+  # 7. Grafana Dashboard as Code (Port 3002)
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: legal-rag-grafana
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ../monitoring/grafana/dashboards:/etc/grafana/dashboards
+    depends_on:
+      - prometheus
+      - postgres
     restart: unless-stopped
 
 volumes:

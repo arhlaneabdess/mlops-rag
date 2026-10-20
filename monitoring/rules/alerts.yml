@@ -1,0 +1,68 @@
+groups:
+  - name: legal_rag_alerts
+    rules:
+      # 1. Service Down (Critical / Symptom)
+      - alert: LegalRAGServiceDown
+        expr: up{job="legal-rag-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          type: symptom
+        annotations:
+          summary: "Legal RAG API service is down"
+          first_action: "Check docker logs legal-rag-api and restart container"
+
+      # 2. p95 Latency SLA Breach (Critical / Symptom)
+      - alert: P95LatencyAboveSLA
+        expr: histogram_quantile(0.95, sum(rate(rag_stage_latency_seconds_bucket[5m])) by (le)) > 5.0
+        for: 2m
+        labels:
+          severity: critical
+          type: symptom
+        annotations:
+          summary: "p95 latency exceeded 5.0s SLA"
+          first_action: "Inspect CPU utilization; execute serving/rollback.sh if candidate is slow"
+
+      # 3. High Error Rate (Critical / Symptom)
+      - alert: HighErrorRate
+        expr: sum(rate(rag_requests_total{status=~"5.."}[5m])) / sum(rate(rag_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          type: symptom
+        annotations:
+          summary: "API error rate exceeds 5%"
+          first_action: "Inspect FastAPI traceback logs in docker logs legal-rag-api"
+
+      # 4. Prompt Injection Attack Spike (Warning / Cause)
+      - alert: PromptInjectionDetected
+        expr: sum(rate(rag_guardrail_rejections_total{guardrail_type="prompt_injection"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          type: cause
+        annotations:
+          summary: "Prompt injection attempt intercepted"
+          first_action: "Audit offending IP address and user session in Langfuse"
+
+      # 5. Token Consumption Budget Burn (Warning / Cause)
+      - alert: HighTokenConsumptionRate
+        expr: sum(rate(rag_tokens_total[5m])) > 500
+        for: 5m
+        labels:
+          severity: warning
+          type: cause
+        annotations:
+          summary: "Token burn rate exceeded threshold"
+          first_action: "Verify if re-ranker is properly compressing prompt context to top-2"
+
+      # 6. Model Artifact / Embedding Drift Detected (Warning / Cause)
+      - alert: EmbeddingDriftDetected
+        expr: rag_requests_total{endpoint="/ask", status="200"} > 0
+        for: 10m
+        labels:
+          severity: warning
+          type: cause
+        annotations:
+          summary: "Check PostgreSQL drift_metrics table for recent semantic drift"
+          first_action: "Review drift history in Grafana Row 4 and evaluate retraining trigger"
