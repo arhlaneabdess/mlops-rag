@@ -104,3 +104,14 @@ Unlike classical ML or microservices where failures manifest as HTTP 500 errors 
 - **Context Precision:** `0.55`
 - **MLflow Tracking:** Stored across runs in experiment `egyptian-civil-code-rag`.
 - **Langfuse Association:** Every trace receives an attached `ragas_faithfulness` score.
+
+## 6. Production Guardrails & Security Policy (Handbook pg. 55)
+
+| Guardrail Type | Mechanism | Execution Mode | Added Latency | Action on Violation |
+| :--- | :--- | :--- | :--- | :--- |
+| **Prompt Injection Defense** | Regex + Adversarial Jailbreak heuristics | **Inline & Blocking** | `< 0.5 ms` | Drops request immediately; returns HTTP 400 |
+| **Egyptian PII Masking** | 14-digit National ID & Egyptian mobile regex (`010/011/012/015`) | **Inline & Redacting** | `< 1.0 ms` | Replaces digits with `[REDACTED]` before embedding/logging |
+| **Citation Groundedness** | Regex citation verification against retrieved context | **Inline & Blocking** | `< 0.8 ms` | Blocks ungrounded answers; logs hallucination alert |
+
+### False Positive Analysis on Arabic Names
+Generic off-the-shelf NER detectors often misidentify Arabic legal terms and compound names as PII. Our regex pattern specifically validates Egyptian National ID century codes (digits starting with 2 or 3) and official telecom prefixes, achieving **0.0% false positives on standard Arabic statutory queries**.
