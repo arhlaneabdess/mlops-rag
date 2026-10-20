@@ -115,3 +115,29 @@ Unlike classical ML or microservices where failures manifest as HTTP 500 errors 
 
 ### False Positive Analysis on Arabic Names
 Generic off-the-shelf NER detectors often misidentify Arabic legal terms and compound names as PII. Our regex pattern specifically validates Egyptian National ID century codes (digits starting with 2 or 3) and official telecom prefixes, achieving **0.0% false positives on standard Arabic statutory queries**.
+
+## 7. The Closed Loop: End-to-End Retraining Chain (Handbook pg. 51–52)
+
+```text
+  [ User Legal Queries ]
+            │
+            ▼
+  [ Embedding Drift Detector ] ──► Exceeds Threshold (Cosine Distance > 0.45)
+            │
+            ▼
+  [ PostgreSQL drift_metrics ] ──► Row written with drifted=True
+            │
+            ▼
+  [ Grafana Row 4 Table ] ───────► Alert Rule Fires to On-Call Channel
+            │
+            ▼
+  [ Airflow / Webhook Hook ] ────► Triggers Continuous Training (dvc repro)
+            │
+            ▼
+  [ Automated Re-indexing ] ─────► Candidate Model Promoted to Staging
+            │
+            ▼
+  [ Human Review Gate ] ─────────► Evaluates Citations & Approves Release
+            │
+            ▼
+  [ Live Production Serving ] ───► Nginx shifts traffic with Zero Code Change!
