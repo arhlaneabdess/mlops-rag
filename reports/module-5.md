@@ -63,7 +63,87 @@ rag_active_requests{endpoint="/ask"} 0.0
 # HELP rag_guardrail_rejections_total Security rejections for prompt injection or PII
 # TYPE rag_guardrail_rejections_total counter
 ```
+### 1.1 Second test
 
+#### Valid Query
+```text
+curl -s -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "ما هو حكم العقد وهل يجوز تعديله بإرادة أحد الطرفين فقط؟", "top_k": 3}' | jq
+```
+#### Invalid Query (triggers 422 validation error counter)
+```text
+curl -s -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": ""}' | jq
+```
+
+#### Scrape the /metrics endpoint:
+```text
+curl -s http://localhost:8000/metrics | head -n 35
+```
+#### Output
+```text
+rag_requests_total{endpoint="/ask",status="200"} 3.0
+rag_requests_total{endpoint="/ask",status="422"} 2.0
+# HELP rag_requests_created Total count of incoming legal queries
+# TYPE rag_requests_created gauge
+rag_requests_created{endpoint="/ask",status="200"} 1.792709992168597e+09
+rag_requests_created{endpoint="/ask",status="422"} 1.7927099922138002e+09
+# HELP rag_stage_latency_seconds Latency breakdown across pipeline stages
+# TYPE rag_stage_latency_seconds histogram
+rag_stage_latency_seconds_bucket{le="0.05",stage="retrieval"} 0.0
+rag_stage_latency_seconds_bucket{le="0.1",stage="retrieval"} 0.0
+rag_stage_latency_seconds_bucket{le="0.25",stage="retrieval"} 0.0
+rag_stage_latency_seconds_bucket{le="0.5",stage="retrieval"} 2.0
+rag_stage_latency_seconds_bucket{le="1.0",stage="retrieval"} 2.0
+rag_stage_latency_seconds_bucket{le="2.5",stage="retrieval"} 2.0
+rag_stage_latency_seconds_bucket{le="5.0",stage="retrieval"} 2.0
+rag_stage_latency_seconds_bucket{le="10.0",stage="retrieval"} 2.0
+rag_stage_latency_seconds_bucket{le="+Inf",stage="retrieval"} 3.0
+rag_stage_latency_seconds_count{stage="retrieval"} 3.0
+rag_stage_latency_seconds_sum{stage="retrieval"} 182.44266091399913
+rag_stage_latency_seconds_bucket{le="0.05",stage="generation"} 3.0
+rag_stage_latency_seconds_bucket{le="0.1",stage="generation"} 3.0
+rag_stage_latency_seconds_bucket{le="0.25",stage="generation"} 3.0
+rag_stage_latency_seconds_bucket{le="0.5",stage="generation"} 3.0
+rag_stage_latency_seconds_bucket{le="1.0",stage="generation"} 3.0
+rag_stage_latency_seconds_bucket{le="2.5",stage="generation"} 3.0
+rag_stage_latency_seconds_bucket{le="5.0",stage="generation"} 3.0
+rag_stage_latency_seconds_bucket{le="10.0",stage="generation"} 3.0
+rag_stage_latency_seconds_bucket{le="+Inf",stage="generation"} 3.0
+rag_stage_latency_seconds_count{stage="generation"} 3.0
+rag_stage_latency_seconds_sum{stage="generation"} 0.00016627099921606714
+rag_stage_latency_seconds_bucket{le="0.05",stage="total"} 0.0
+rag_stage_latency_seconds_bucket{le="0.1",stage="total"} 0.0
+rag_stage_latency_seconds_bucket{le="0.25",stage="total"} 0.0
+rag_stage_latency_seconds_bucket{le="0.5",stage="total"} 2.0
+rag_stage_latency_seconds_bucket{le="1.0",stage="total"} 2.0
+rag_stage_latency_seconds_bucket{le="2.5",stage="total"} 2.0
+rag_stage_latency_seconds_bucket{le="5.0",stage="total"} 2.0
+rag_stage_latency_seconds_bucket{le="10.0",stage="total"} 2.0
+rag_stage_latency_seconds_bucket{le="+Inf",stage="total"} 3.0
+rag_stage_latency_seconds_count{stage="total"} 3.0
+rag_stage_latency_seconds_sum{stage="total"} 182.4433912810009
+# HELP rag_stage_latency_seconds_created Latency breakdown across pipeline stages
+# TYPE rag_stage_latency_seconds_created gauge
+rag_stage_latency_seconds_created{stage="retrieval"} 1.7927098105739927e+09
+rag_stage_latency_seconds_created{stage="generation"} 1.7927099921684356e+09
+rag_stage_latency_seconds_created{stage="total"} 1.7927099921685598e+09
+# HELP rag_tokens_total Total tokens consumed for cost tracking
+# TYPE rag_tokens_total counter
+rag_tokens_total{token_type="prompt"} 45.0
+rag_tokens_total{token_type="completion"} 294.0
+# HELP rag_tokens_created Total tokens consumed for cost tracking
+# TYPE rag_tokens_created gauge
+rag_tokens_created{token_type="prompt"} 1.792709992168531e+09
+rag_tokens_created{token_type="completion"} 1.7927099921685448e+09
+# HELP rag_active_requests Current in-flight concurrent requests
+# TYPE rag_active_requests gauge
+rag_active_requests{endpoint="/ask"} 0.0
+# HELP rag_guardrail_rejections_total Security rejections for prompt injection or PII
+# TYPE rag_guardrail_rejections_total counter
+```
 ## 2. Legal Drift Taxonomy & Detection Matrix (Handbook pg. 43–44)
 
 | Drift Type | What Changes | First Signal to Appear | Ground Truth Needed? | Detection Tool | Time Until User Notices |
@@ -83,12 +163,15 @@ rag_active_requests{endpoint="/ask"} 0.0
 Unlike classical ML or microservices where failures manifest as HTTP 500 errors or latency spikes, LLM applications fail silently with fluent, grammatically correct hallucinations while returning HTTP 200. Traditional CPU/RAM monitoring fails to detect prompt regressions, context overflow, or toxic completions.
 
 ### Tracing Hierarchy Implemented
+
 - **Trace (`arabic_legal_rag_query`):** Encapsulates the entire request, tagging `user_id`, `session_id`, `correlation_id`, and `law`.
   - **Span (`retrieve`):** Tracks dense retrieval latency, top-$k$ configuration, and candidate article IDs.
   - **Span (`rerank`):** Records context compression ratio (pruning 5 candidate chunks to top-2).
   - **Generation (`generate`):** Records the exact Arabic prompt, model name (`Qwen2.5-0.5B-Instruct`), prompt vs. completion token counts, and synthesized legal advice.
   - **Score (`groundedness_initial`):** Attaches quality judgements directly to the trace.
 
+  ![alt text](image-1.png)
+  ![alt text](image-2.png)
 ## 5. RAGAS Evaluation Scorecard & Blame Matrix (Handbook pg. 54 & 69)
 
 ### The 4 RAGAS Metrics & What Each One Blames
@@ -105,6 +188,17 @@ Unlike classical ML or microservices where failures manifest as HTTP 500 errors 
 - **MLflow Tracking:** Stored across runs in experiment `egyptian-civil-code-rag`.
 - **Langfuse Association:** Every trace receives an attached `ragas_faithfulness` score.
 
+### 1. Why Context Recall Is 0.5667 (Blames the Retriever)
+
+- **Cross-statutory interleaving:** Several benchmark questions address multi-article doctrines (e.g., Question 9 regarding repealed Articles 54–80, or questions spanning both Formation of Contract and Rules of Nullity). With single-turn retrieval using \(top_k = 3\), dense semantic embeddings retrieve the primary article (e.g., Article 147) but miss peripheral supporting procedural articles.
+- **Dialectal and statutory vocabulary gap:** The 1948 Egyptian Civil Code uses classical statutory phrasing (e.g., “حق الارتفاق”, “المتبوع والتابع”). When queries use contemporary colloquial or descriptive phrasing, dense similarity may land in adjacent chapters of the Civil Code.
+- **Production decision:** Rather than artificially expanding \(top_k\) to 15—which would increase token costs by 300% and dilute generation precision—we retain \(top_k = 3\) paired with the Distilled Re-ranker. This accepts 56.7% recall on secondary statutory articles while preserving high core faithfulness (87.1%).
+
+### 2. Why Context Precision Is 0.5500 (Blames the Retriever / Re-ranker)
+
+- **Multi-paragraph statutory structures:** Egyptian Civil Code articles are dense and contain multiple numbered sub-clauses (فقرات). For example, Article 803 addresses soil ownership, airspace rights, and subterranean rights in distinct paragraphs. When the retriever returns all three paragraphs for a query that only asks about airspace, the non-relevant provisions lower the signal-to-noise ratio.
+- **Re-ranker compression:** The distilled re-ranker prunes candidate context to the top 2 provisions, keeping prompt token costs low while ensuring the generator is not confused by extraneous statutory clauses.
+
 ## 6. Production Guardrails & Security Policy (Handbook pg. 55)
 
 | Guardrail Type | Mechanism | Execution Mode | Added Latency | Action on Violation |
@@ -112,6 +206,9 @@ Unlike classical ML or microservices where failures manifest as HTTP 500 errors 
 | **Prompt Injection Defense** | Regex + Adversarial Jailbreak heuristics | **Inline & Blocking** | `< 0.5 ms` | Drops request immediately; returns HTTP 400 |
 | **Egyptian PII Masking** | 14-digit National ID & Egyptian mobile regex (`010/011/012/015`) | **Inline & Redacting** | `< 1.0 ms` | Replaces digits with `[REDACTED]` before embedding/logging |
 | **Citation Groundedness** | Regex citation verification against retrieved context | **Inline & Blocking** | `< 0.8 ms` | Blocks ungrounded answers; logs hallucination alert |
+
+### Adversarial Test Matrix
+![alt text](image-3.png)
 
 ### False Positive Analysis on Arabic Names
 Generic off-the-shelf NER detectors often misidentify Arabic legal terms and compound names as PII. Our regex pattern specifically validates Egyptian National ID century codes (digits starting with 2 or 3) and official telecom prefixes, achieving **0.0% false positives on standard Arabic statutory queries**.

@@ -7,6 +7,40 @@
       "tags": [],
       "files": [],
       "configPath": ".repomix/config/mlops-rag-bundle-repomix.config.json"
+    },
+    "module5-909": {
+      "name": "module5",
+      "created": "2026-10-22T21:32:12.651Z",
+      "lastUsed": "2026-10-22T21:32:45.235Z",
+      "tags": [],
+      "files": [
+        ".dvc",
+        ".github",
+        ".pytest_cache",
+        ".repomix",
+        ".ruff_cache",
+        "data",
+        "docker",
+        "docs",
+        "infra",
+        "loadtest",
+        "monitoring",
+        "optimization",
+        "reports",
+        "scripts",
+        "serving",
+        "src",
+        "tests",
+        ".coverage",
+        ".dockerignore",
+        ".dvcignore",
+        ".gitignore",
+        "dvc.lock",
+        "dvc.yaml",
+        "project_dump.md",
+        "pyproject.toml",
+        "README.md"
+      ]
     }
   }
 }

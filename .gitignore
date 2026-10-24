@@ -219,3 +219,5 @@ __marimo__/
 data/processed/
 *.tfstate*
 .terraform/
+repomix-output*
+*.xml
