@@ -29,7 +29,7 @@ os.environ.setdefault("LANGFUSE_SECRET_KEY", "sk-lf-local-legal-rag")
 
 try:
     langfuse_client = Langfuse() if Langfuse else None
-except Exception:
+except Exception:  # noqa: BLE001
     langfuse_client = None
 
 
@@ -107,7 +107,7 @@ class TracedLegalRAG:
         question: str,
         user_id: str = "attorney_cairo_01",
         session_id: str = "session_contract_review",
-        correlation_id: str = None,
+        correlation_id: str | None = None,
     ) -> dict[str, Any]:
         corr_id = correlation_id or str(uuid.uuid4())
 
