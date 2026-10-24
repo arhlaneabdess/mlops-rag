@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -77,12 +78,24 @@ async def lifespan(app: FastAPI):
     CORPUS_STORE.clear()
 
 
+VALID_REQUEST_ID_REGEX = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
+
+
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        corr_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        raw_id = request.headers.get("X-Request-ID", "").strip()
+
+        # Security sanitization: alphanumeric, hyphens, underscores up to 64 chars
+        if raw_id and VALID_REQUEST_ID_REGEX.match(raw_id):
+            corr_id = raw_id
+        else:
+            corr_id = str(uuid.uuid4())
+
         request.state.correlation_id = corr_id
         start_time = time.perf_counter()
+
         response: Response = await call_next(request)
+
         latency_ms = (time.perf_counter() - start_time) * 1000
         response.headers["X-Request-ID"] = corr_id
         response.headers["X-Response-Time-MS"] = f"{latency_ms:.2f}"
